@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.14</version>
+		<version>3.5.16</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.hardware</groupId>
@@ -25,7 +25,7 @@
 		<developerConnection/>
 		<tag/>
 		<url/>
-	</scm>
+	</scm>	
 	<properties>
 		<java.version>21</java.version>
 	</properties>
@@ -77,7 +77,23 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>0.11.5</version>
 		</dependency>
-		
+		<!-- LangChain4j for OpenAI / Gemini LLM and Embedding Integration -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-google-ai-gemini</artifactId>
+			<version>0.35.0</version>
+		</dependency>
+		<!-- LangChain4j Core Interfaces -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j</artifactId>
+			<version>0.35.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -4,11 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -19,36 +20,62 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserRepository userRepository;
+    private final JwtUtils jwtUtils;
+    private final UserRepository userRepository;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            if (jwtUtils.validateToken(token)) {
-                String email = jwtUtils.getEmailFromToken(token);
-                List<GrantedAuthority> authorities = new ArrayList<>();
-                User user = userRepository.findByEmail(email).orElse(null);
-                if (user != null) {
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                }
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        email, null, authorities);
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
+        // Bypass filter if no Bearer token header exists
+        if (authHeader == null || !authHeader.startsWith("Bearer ") || authHeader.length() <= 7) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        try {
+            final String token = authHeader.substring(7).trim();
+
+            if (jwtUtils.validateToken(token)) {
+                final String rawEmail = jwtUtils.getEmailFromToken(token);
+
+                if (rawEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    final String email = rawEmail.trim().toLowerCase();
+                    User user = userRepository.findByEmail(email).orElse(null);
+
+                    if (user != null) {
+                        List<GrantedAuthority> authorities = new ArrayList<>();
+                        if (user.getRole() != null) {
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                        }
+
+                        // user.getEmail() as principal ensures authentication.getName() matches repository queries
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                user.getEmail().toLowerCase(),
+                                null,
+                                authorities
+                        );
+
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            SecurityContextHolder.clearContext();
+        }
+
         filterChain.doFilter(request, response);
     }
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hardware.jenga.entity.Category;
 import com.hardware.jenga.repository.CategoryRepository;
@@ -19,164 +20,93 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
-        // Only initialize if no categories exist
+        // Do not re-seed if the categories table is already populated
         if (categoryRepository.count() > 0) {
             return;
         }
 
-        Map<String, Category> created = new HashMap<>();
+        Map<Integer, Category> parentMap = new HashMap<>();
 
-        // Helper to create a category
-        java.util.function.BiFunction<String, Category, Category> create = (name, parent) -> {
+        // Helper to instantiate and save a category
+        java.util.function.BiFunction<String, Category, Category> createCat = (name, parent) -> {
             Category cat = new Category();
             cat.setName(name);
-            cat.setSlug(name.toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-").replaceAll("^-|-$", ""));
+            cat.setSlug(name.toLowerCase()
+                    .replaceAll("[^a-z0-9]+", "-")
+                    .replaceAll("^-|-$", ""));
             cat.setParent(parent);
             return categoryRepository.save(cat);
         };
 
-        // Level 1: Parent categories
+        // 1. Exactly the 9 agreed main parent categories
         String[] parents = {
-            "Paints & Painting Supplies",
-            "Gate Accessories",
-            "Doors",
-            "Door Frames",
-            "Ceramics",
-            "Door Locks",
-            "Timber",
-            "Aluminium",
-            "Flooring & Tiling",
-            "Manufactured Boards",
-            "Ceilings and Accessories",
-            "Gypsum",
-            "Granite",
-            "Services",
-            "Cement"
+            "Paints & Painting Supplies",          // 1
+            "Gate Accessories",                   // 2
+            "Doors & Frames",                      // 3
+            "Ceramics & Sanitaryware",             // 4
+            "Timber & Boards",                     // 5
+            "Aluminium, Glass & Windows",          // 6
+            "Ceilings & Gypsum",                   // 7
+            "Professional Workshop Services",      // 8
+            "Cement & Construction Chemicals"      // 9
         };
 
-        for (String name : parents) {
-            created.put(name, create.apply(name, null));
+        int index = 1;
+        for (String parentName : parents) {
+            Category parent = createCat.apply(parentName, null);
+            parentMap.put(index++, parent);
         }
 
-        // Level 2: Sub-categories
+        // 2. Subcategories mapped strictly to their parents
 
-        // Paints & Painting Supplies
-        createChild(create, created, "Paints & Painting Supplies",
-            "Crown paint", "Duracoat paint", "Paint brush");
+        // 1: Paints & Painting Supplies
+        createChildren(createCat, parentMap.get(1),
+                "Crown Paint", "Duracoat Paint", "Paint Brushes & Rollers");
 
-        // Gate Accessories
-        createChild(create, created, "Gate Accessories",
-            "Decor sheet", "Gate Arrow designs");
+        // 2: Gate Accessories
+        createChildren(createCat, parentMap.get(2),
+                "Decor Sheet", "Gate Arrow Designs");
 
-        // Doors
-        createChild(create, created, "Doors",
-            "Steel Doors", "Wooden Doors", "Roller shutter");
+        // 3: Doors & Frames
+        createChildren(createCat, parentMap.get(3),
+                "Steel Doors", "Wooden Doors", "Roller Shutters", "Door Frames (6x2, 4x2)", "Door Locks");
 
-        // Door Frames
-        createChild(create, created, "Door Frames",
-            "6x2 frame", "4x2 frame", "2x2 frame");
+        // 4: Ceramics & Sanitaryware
+        createChildren(createCat, parentMap.get(4),
+                "Wall & Floor Tiles", "Sanitaryware & Bathrooms", "Tableware & Kitchenware");
 
-        // Ceramics (with sub-groupings)
-        Category ceramics = created.get("Ceramics");
-        Category tilesFlooring = create.apply("Tiles & Flooring", ceramics);
-        Category sanitaryware = create.apply("Sanitaryware & Bathrooms", ceramics);
-        Category tableware = create.apply("Tableware & Kitchenware", ceramics);
-        Category structural = create.apply("Structural & Industrial", ceramics);
-        Category decorative = create.apply("Decorative & Artistic", ceramics);
+        // 5: Timber & Boards
+        createChildren(createCat, parentMap.get(5),
+                "Hardwoods (Mahogany/Mvule)", "Softwoods (Cypress/Pine)", "MDF & Plywood");
 
-        // Ceramics → Tiles & Flooring
-        create.apply("Wall tiles (30x60)", tilesFlooring);
-        create.apply("Wall tiles (30x45)", tilesFlooring);
-        create.apply("Floor tiles (30x30)", tilesFlooring);
-        create.apply("Floor tiles (40x40)", tilesFlooring);
-        create.apply("Floor tiles (60x60)", tilesFlooring);
-        create.apply("Mosaic tiles", tilesFlooring);
-        create.apply("Border tiles", tilesFlooring);
-        create.apply("Pool tiles", tilesFlooring);
+        // 6: Aluminium, Glass & Windows
+        createChildren(createCat, parentMap.get(6),
+                "Sliding Aluminium Windows",
+                "Casement & Louver Windows",
+                "Toughened / Laminated Safety Glass",
+                "Tinted & Frosted Architectural Glass",
+                "Window Glazing, Channels & Sealants");
 
-        // Ceramics → Sanitaryware & Bathrooms
-        create.apply("Basins", sanitaryware);
-        create.apply("Toilets", sanitaryware);
-        create.apply("Basins mixers", sanitaryware);
-        create.apply("Showers", sanitaryware);
+        // 7: Ceilings & Gypsum has no immediate default children
 
-        // Ceramics → Tableware & Kitchenware
-        create.apply("Dinner sets", tableware);
-        create.apply("Plates", tableware);
-        create.apply("Bowls", tableware);
-        create.apply("Mugs (Bone China)", tableware);
+        // 8: Professional Workshop Services
+        createChildren(createCat, parentMap.get(8),
+                "CNC Cutting", "Door Lock Drilling", "Board Edging");
 
-        // Ceramics → Structural & Industrial
-        create.apply("Bricks", structural);
-        create.apply("Refractories (kiln linings)", structural);
-        create.apply("Pipes", structural);
-        create.apply("Abrasives", structural);
-
-        // Ceramics → Decorative & Artistic
-        create.apply("Pottery", decorative);
-        create.apply("Flower pots", decorative);
-        create.apply("Vases", decorative);
-
-        // Door Locks
-        createChild(create, created, "Door Locks",
-            "Wooden door locks", "Steel door locks");
-
-        // Timber (with sub-groupings)
-        Category timber = created.get("Timber");
-        Category hardwoods = create.apply("Hardwoods", timber);
-        Category softwoods = create.apply("Softwoods", timber);
-
-        create.apply("Mahogany", hardwoods);
-        create.apply("European cypress", hardwoods);
-        create.apply("Sudan tick", hardwoods);
-        create.apply("Mvule (Iroko)", hardwoods);
-        create.apply("Meru Oak", hardwoods);
-        create.apply("Olivewood", hardwoods);
-
-        create.apply("Cypress", softwoods);
-        create.apply("Pine", softwoods);
-
-        // Aluminium
-        createChild(create, created, "Aluminium",
-            "Shower Cubicle Sliding aluminium");
-
-        // Flooring & Tiling
-        createChild(create, created, "Flooring & Tiling",
-            "30x30 tiles", "60x60 tiles", "SpC Flooring", "Wooden tiles");
-
-        // Manufactured Boards
-        createChild(create, created, "Manufactured Boards",
-            "MDF (Medium Density Fiberboard)", "Plywood", "Chipboard (Particleboard)", "Hardboard", "Gypsum boards");
-
-        // Ceilings and Accessories
-        createChild(create, created, "Ceilings and Accessories",
-            "PVC ceiling", "Gypsum Ceiling", "Ceiling boards 7mm/9mm");
-
-        // Gypsum
-        createChild(create, created, "Gypsum",
-            "Gypsum board");
-
-        // Granite
-        createChild(create, created, "Granite",
-            "Black Galaxy Granite", "Granite glue polishing pad");
-
-        // Services
-        createChild(create, created, "Services",
-            "CNC Cutting", "Door Lock Drilling", "Board edging", "Powder coating");
-
-        // Cement
-        createChild(create, created, "Cement",
-            "Simba", "Ndovu", "Mombasa Cement");
+        // 9: Cement & Construction Chemicals
+        createChildren(createCat, parentMap.get(9),
+                "Cement (Simba/Ndovu)");
     }
 
-    private void createChild(
-            java.util.function.BiFunction<String, Category, Category> create,
-            Map<String, Category> created, String parentName, String... childNames) {
-        Category parent = created.get(parentName);
+    private void createChildren(
+            java.util.function.BiFunction<String, Category, Category> creator,
+            Category parent,
+            String... childNames) {
         if (parent == null) return;
         for (String name : childNames) {
-            create.apply(name, parent);
+            creator.apply(name, parent);
         }
     }
 }

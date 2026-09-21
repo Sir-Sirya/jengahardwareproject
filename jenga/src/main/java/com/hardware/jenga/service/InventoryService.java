@@ -1,42 +1,61 @@
 package com.hardware.jenga.service;
 
-import com.hardware.jenga.entity.*;
-import com.hardware.jenga.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
+
+import com.hardware.jenga.entity.Notification;
+import com.hardware.jenga.entity.Product;
+import com.hardware.jenga.repository.NotificationRepository;
+import com.hardware.jenga.repository.ProductRepository;
 
 @Service
 public class InventoryService {
 
-    @Autowired
-    private ProductRepository productRepository;
+    private static final int DEFAULT_DEPLETION_THRESHOLD = 0; // Out-of-stock threshold
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private final ProductRepository productRepository;
+    private final NotificationRepository notificationRepository;
 
-    // This method runs every hour to check for low stock
+    public InventoryService(ProductRepository productRepository, NotificationRepository notificationRepository) {
+        this.productRepository = productRepository;
+        this.notificationRepository = notificationRepository;
+    }
+
+    // Runs periodically to automatically deactivate listings that hit zero stock
     @Scheduled(fixedRate = 3600000)
     @Transactional
-    public void checkLowStockLevels() {
+    public void monitorInventoryLevels() {
         List<Product> products = productRepository.findAll();
-        
+
         for (Product product : products) {
-            BusinessProfile profile = product.getSeller().getBusinessProfile(); // Ensure relationship exists
-            
-            if (product.getStockQuantity() <= profile.getLowStockThreshold()) {
-                createLowStockNotification(product);
+            if (product.getSeller() == null || product.getStockQuantity() == null) {
+                continue;
+            }
+
+            // If an active listing has completely sold out, auto-deactivate and notify the seller
+            if (Boolean.TRUE.equals(product.getIsActive()) && product.getStockQuantity() <= DEFAULT_DEPLETION_THRESHOLD) {
+                product.setIsActive(false);
+                productRepository.save(product);
+
+                createStockDepletedNotification(product);
             }
         }
     }
 
-    private void createLowStockNotification(Product product) {
-        Notification notification = new Notification();
-        notification.setUser(product.getSeller());
-        notification.setType(Notification.NotificationType.LOW_STOCK);
-        notification.setMessage("Alert: " + product.getTitle() + " is low on stock (" + product.getStockQuantity() + " left).");
-        notificationRepository.save(notification);
+    private void createStockDepletedNotification(Product product) {
+        try {
+            Notification notification = new Notification();
+            notification.setUser(product.getSeller());
+            notification.setMessage("Inventory Alert: '" + product.getTitle() + "' is out of stock (0 units remaining). Listing has been set to Inactive.");
+            notification.setIsRead(false);
+            notification.setCreatedAt(LocalDateTime.now());
+            notificationRepository.save(notification);
+        } catch (Exception ignored) {
+            // Notification logging failure should not halt scheduled maintenance
+        }
     }
-} 
+}

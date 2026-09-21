@@ -10,7 +10,9 @@ export default function Layout() {
       </main>
       <footer className="bg-white border-t border-gray-200 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
-          <p> Jenga P2P Marketplace. Connecting buyers and sellers directly.</p>
+          <p> © 2026 Jenga MarketPlace. All rights reserved. </p>   
+
+          <p>All text, media, and source code are protected under the Copyright Act (Cap 130) of Kenya. Unauthorized copying, redistribution is strictly prohibited and subject to litigation. Registered with KECOBO. </p>
         </div>
       </footer>
     </div>

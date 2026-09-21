@@ -19,13 +19,46 @@ export default function Login() {
     setError('');
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     try {
-      const res = await authApi.login(email, password);
+      const res = await authApi.login(cleanEmail, cleanPassword);
       const { token, user } = res.data as { token: string; user: User };
+
+      if (!token) {
+        throw new Error('Authentication failed: No token received from server.');
+      }
+
+      // Explicitly set both storage keys so Axios interceptors always find the fresh token
+      localStorage.setItem('jenga_token', token);
+      localStorage.setItem('token', token);
+      if (user) {
+        localStorage.setItem('jenga_user', JSON.stringify(user));
+      }
+
+      // Update AuthContext state
       login(token, user);
-      navigate('/');
+
+      // Redirect seller to marketplace or dashboard
+      navigate('/marketplace');
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: string }; message?: string }).response?.data || 'Login failed. Please try again.';
+      const apiError = err as {
+        response?: { data?: { error?: string; message?: string } | string };
+        message?: string;
+      };
+
+      let message = 'Login failed. Please verify your credentials.';
+      if (typeof apiError.response?.data === 'string') {
+        message = apiError.response.data;
+      } else if (apiError.response?.data?.message) {
+        message = apiError.response.data.message;
+      } else if (apiError.response?.data?.error) {
+        message = apiError.response.data.error;
+      } else if (apiError.message) {
+        message = apiError.message;
+      }
+
       setError(message);
     } finally {
       setLoading(false);
@@ -54,10 +87,11 @@ export default function Login() {
                 id="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
-                placeholder="you@example.com"
+                placeholder="seller@example.com"
               />
             </div>
 
@@ -68,6 +102,7 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pr-10"
@@ -86,7 +121,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary flex items-center justify-center gap-2"
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

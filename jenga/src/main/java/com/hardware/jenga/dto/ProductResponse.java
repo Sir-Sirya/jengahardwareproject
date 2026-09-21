@@ -1,36 +1,73 @@
 package com.hardware.jenga.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hardware.jenga.entity.Product;
-import lombok.Data;
 
-import java.time.LocalDateTime;
-
-@Data
-public class ProductResponse {
-    private Long id;
-    private String title;
-    private String description;
-    private Double price;
-    private Integer stockQuantity;
-    private String imageUrl;
-    private String whatsappLink;
-    private LocalDateTime createdAt;
-    private UserResponse seller;
-    private CategoryResponse category;
-
+public record ProductResponse(
+    Long id,
+    String title,
+    String description,
+    Double price,
+    Integer stockQuantity,
+    String imageUrl,
+    String categoryName,
+    Integer categoryId,
+    Long sellerId,
+    String sellerName,
+    String whatsappLink,
+    String videoUrl,
+    
+    @JsonProperty("isActive")
+    Boolean isActive
+) {
     public static ProductResponse fromEntity(Product product) {
         if (product == null) return null;
-        ProductResponse resp = new ProductResponse();
-        resp.setId(product.getId());
-        resp.setTitle(product.getTitle());
-        resp.setDescription(product.getDescription());
-        resp.setPrice(product.getPrice());
-        resp.setStockQuantity(product.getStockQuantity());
-        resp.setImageUrl(product.getImageUrl());
-        resp.setWhatsappLink(product.getWhatsappLink());
-        resp.setCreatedAt(product.getCreatedAt());
-        resp.setSeller(UserResponse.fromEntity(product.getSeller()));
-        resp.setCategory(CategoryResponse.fromEntity(product.getCategory()));
-        return resp;
+
+        Integer categoryId = null;
+        String categoryName = "";
+        try {
+            if (product.getCategory() != null) {
+                categoryId = product.getCategory().getId();
+                categoryName = product.getCategory().getName() != null 
+                        ? product.getCategory().getName() 
+                        : "";
+            }
+        } catch (Exception ignored) {
+            categoryId = null;
+            categoryName = "";
+        }
+
+        Long sellerId = null;
+        String sellerName = "";
+        try {
+            if (product.getSeller() != null) {
+                sellerId = product.getSeller().getId();
+                sellerName = product.getSeller().getFullName() != null 
+                        ? product.getSeller().getFullName() 
+                        : "";
+            }
+        } catch (Exception ignored) {
+            sellerId = null;
+            sellerName = "";
+        }
+
+        // Resolves null active states to true by default
+        Boolean resolvedActive = product.getIsActive() != null ? product.getIsActive() : true;
+
+        return new ProductResponse(
+            product.getId(),
+            product.getTitle(),
+            product.getDescription(),
+            product.getPrice(),
+            product.getStockQuantity() != null ? product.getStockQuantity() : 1,
+            product.getImageUrl(),
+            categoryName,
+            categoryId,
+            sellerId,
+            sellerName,
+            product.getWhatsappLink(),
+            product.getVideoUrl(),
+            resolvedActive
+        );
     }
 }

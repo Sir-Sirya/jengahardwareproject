@@ -11,6 +11,12 @@ import SellerDashboard from './pages/SellerDashboard';
 import AddEditProduct from './pages/AddEditProduct';
 import Notifications from './pages/Notifications';
 import AdminDashboard from './pages/AdminDashboard';
+import BuyerProfile from './pages/BuyerProfile';
+import Checkout from './pages/Checkout';
+import { AboutUs } from './pages/AboutUs';
+import { ContactUs } from './pages/ContactUs';
+import BusinessProfileForm from './pages/BusinessProfileForm';
+import { FloatingAiButton } from './components/FloatingAiButton';
 
 function NotFound() {
   return (
@@ -28,27 +34,41 @@ function NotFound() {
 
 function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/marketplace" element={<ProductDiscovery />} />
-        <Route path="/marketplace/:categorySlug" element={<ProductDiscovery />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
+    <>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/marketplace" element={<ProductDiscovery />} />
+          <Route path="/marketplace/:categorySlug" element={<ProductDiscovery />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          {/* Registered Checkout Route */}
+          <Route path="/checkout" element={<Checkout />} />
+          {/* Customer / Buyer Account Route */}
+          <Route path="/profile" element={<BuyerProfile />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<SellerDashboard />} />
-          <Route path="/product/new" element={<AddEditProduct />} />
-          <Route path="/product/edit/:id" element={<AddEditProduct />} />
-          <Route path="/notifications" element={<Notifications />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<SellerDashboard />} />
+            <Route path="/product/new" element={<AddEditProduct />} />
+            <Route path="/product/edit/:id" element={<AddEditProduct />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/business-profile" element={<BusinessProfileForm />} />
+          </Route>
+
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
+
+      {/* Global Persistent Floating AI Hardware Advisor */}
+      <FloatingAiButton />
+    </>
   );
 }
 

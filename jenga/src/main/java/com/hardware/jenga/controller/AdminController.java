@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,27 +20,27 @@ import com.hardware.jenga.repository.ProductLeadRepository;
 import com.hardware.jenga.repository.ProductRepository;
 import com.hardware.jenga.repository.UserRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/admin")
+@RequiredArgsConstructor
 public class AdminController {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductLeadRepository productLeadRepository;
 
-    @Autowired
-    private ProductLeadRepository productLeadRepository;
+    
+    private final CategoryRepository categoryRepository;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+   
+    private final BusinessProfileRepository businessProfileRepository;
 
-    @Autowired
-    private BusinessProfileRepository businessProfileRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
+  
+    private final NotificationRepository notificationRepository;
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Long>> getStats() {

@@ -17,6 +17,7 @@ public class CategoryHierarchyDto {
     private String name;
     private String slug;
     private String iconName;
+    private Integer parentId;
     private List<CategoryHierarchyDto> children = new ArrayList<>();
 
     public static CategoryHierarchyDto fromEntity(Category category) {
@@ -26,6 +27,8 @@ public class CategoryHierarchyDto {
         dto.setName(category.getName());
         dto.setSlug(category.getSlug());
         dto.setIconName(category.getIconName());
+        dto.setParentId(category.getParentId());
+
         if (category.getChildren() != null) {
             for (Category child : category.getChildren()) {
                 dto.getChildren().add(fromEntity(child));

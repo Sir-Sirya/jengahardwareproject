@@ -1,149 +1,275 @@
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { productApi, categoryApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Hammer, Search, Shield, TrendingUp, Store, ArrowRight } from 'lucide-react';
+import { AGREED_MAIN_CATEGORIES } from '../components/Navbar';
+import ProductCard from '../components/ProductCard';
+import {
+  Flame,
+  ArrowRight,
+  Loader2,
+  Package,
+  Shield,
+  Clock,
+  TrendingUp,
+  Paintbrush,
+  Fence,
+  DoorOpen,
+  Bath,
+  TreePine,
+  Layers,
+  Sparkles,
+  Wrench,
+  Construction,
+} from 'lucide-react';
+import type { Product, Category } from '../types';
+import { getMediaUrl } from '../utils/imageUrl';
 
 export default function Home() {
   const { isAuthenticated, isSeller } = useAuth();
+  const navigate = useNavigate();
+
+  const [parentCategories, setParentCategories] = useState<Category[]>(AGREED_MAIN_CATEGORIES);
+  const [deals, setDeals] = useState<Product[]>([]);
+  const [trending, setTrending] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Distinct icons for the 9 agreed parent categories
+  const getParentIcon = (id: number) => {
+    switch (id) {
+      case 1:
+        return <Paintbrush className="w-8 h-8 text-indigo-600" />;
+      case 2:
+        return <Fence className="w-8 h-8 text-amber-600" />;
+      case 3:
+        return <DoorOpen className="w-8 h-8 text-blue-600" />; // Doors & Frames
+      case 4:
+        return <Bath className="w-8 h-8 text-teal-600" />; // Ceramics & Sanitaryware
+      case 5:
+        return <TreePine className="w-8 h-8 text-emerald-600" />; // Timber & Boards
+      case 6:
+        return <Layers className="w-8 h-8 text-cyan-600" />; // Aluminium, Glass & Windows
+      case 7:
+        return <Sparkles className="w-8 h-8 text-violet-600" />; // Ceilings & Gypsum
+      case 8:
+        return <Wrench className="w-8 h-8 text-slate-600" />; // Professional Workshop Services
+      case 9:
+        return <Construction className="w-8 h-8 text-orange-600" />; // Cement & Construction Chemicals
+      default:
+        return <Package className="w-8 h-8 text-jenga-700" />;
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [catRes, dealsRes, trendingRes] = await Promise.allSettled([
+          categoryApi.getAll(),
+          productApi.getPublicProducts('price-asc'),
+          productApi.getTrending ? productApi.getTrending(8) : productApi.getPublicProducts('newest'),
+        ]);
+
+        // Category syncing
+        if (catRes.status === 'fulfilled' && Array.isArray(catRes.value.data) && catRes.value.data.length > 0) {
+          const matched = AGREED_MAIN_CATEGORIES.map((def) => {
+            const found = catRes.value.data.find((c: any) => Number(c.id) === def.id);
+            return found ? { ...def, name: found.name, slug: found.slug } : def;
+          });
+          setParentCategories(matched);
+        } else {
+          setParentCategories(AGREED_MAIN_CATEGORIES);
+        }
+
+        // Today's Deals (lowest prices / sorted deals)
+        if (dealsRes.status === 'fulfilled' && Array.isArray(dealsRes.value.data)) {
+          setDeals(dealsRes.value.data.slice(0, 4));
+        }
+
+        // Trending Items
+        if (trendingRes.status === 'fulfilled' && Array.isArray(trendingRes.value.data)) {
+          setTrending(trendingRes.value.data.slice(0, 8));
+        }
+      } catch (err) {
+        console.error('Failed to load home catalog data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   return (
-    <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-jenga-700 to-jenga-900 text-white py-16 md:py-24">
+    <div className="min-h-screen bg-white">
+      {/* 1. Hero Promotional Banner */}
+      <section className="bg-gradient-to-br from-jenga-700 to-jenga-900 text-white py-12 md:py-16 shadow-inner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            <span className="inline-block bg-accent-orange text-white text-xs font-bold uppercase px-3 py-1 rounded-md mb-3 tracking-wider">
+              Online Wholesale Hardware
+            </span>
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
               Buy & Sell Hardware. Directly.
             </h1>
-            <p className="text-lg md:text-xl text-jenga-100 mb-8">
-              Jenga P2P connects buyers with Gikomba vendors directly. No middlemen.
-              No hidden taxes. Just pure hardware marketplace.
+            <p className="text-base sm:text-lg text-jenga-100 mt-3">
+              Direct connection to certified timber, steel doors, glass & windows, cement, and electrical supplies. Pure E-commerce with zero broker cuts.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/marketplace" className="inline-flex items-center gap-2 bg-white text-jenga-800 px-6 py-3 rounded-lg font-semibold hover:bg-jenga-50 transition-colors">
-                <Search className="h-5 w-5" />
+            <div className="mt-6 flex flex-wrap gap-4">
+              <button
+                onClick={() => navigate('/marketplace')}
+                className="bg-white text-jenga-800 px-6 py-3 rounded-xl font-bold hover:bg-jenga-50 transition-colors shadow"
+              >
                 Browse Marketplace
-              </Link>
+              </button>
               {!isAuthenticated && (
-                <Link to="/register" className="inline-flex items-center gap-2 bg-accent-orange text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors">
-                  <Store className="h-5 w-5" />
+                <button
+                  onClick={() => navigate('/register')}
+                  className="bg-accent-orange text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition-colors shadow"
+                >
                   Start Selling
-                </Link>
+                </button>
               )}
               {isAuthenticated && isSeller && (
-                <Link to="/dashboard" className="inline-flex items-center gap-2 bg-accent-orange text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors">
-                  <TrendingUp className="h-5 w-5" />
-                  My Dashboard
-                </Link>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="bg-accent-orange text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition-colors shadow"
+                >
+                  Seller Dashboard
+                </button>
               )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Value Props */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-12">
-            Why Jenga P2P?
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-6 rounded-xl bg-gray-50">
-              <div className="w-12 h-12 bg-jenga-100 text-jenga-700 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Hammer className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Direct P2P Connection</h3>
-              <p className="text-sm text-gray-600">
-                Connect with sellers via WhatsApp and M-Pesa. No platform commissions, no order tracing.
-              </p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 2. Visual Category Cards: Strictly the 9 Main Categories */}
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">Shop by Categories</h2>
+              <p className="text-xs text-gray-500">Explore verified construction and finishing supplies</p>
             </div>
-            <div className="text-center p-6 rounded-xl bg-gray-50">
-              <div className="w-12 h-12 bg-accent-green/10 text-accent-green rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Secure & Simple</h3>
-              <p className="text-sm text-gray-600">
-                Verified vendor profiles, encrypted data, and an interface anyone can use in minutes.
-              </p>
-            </div>
-            <div className="text-center p-6 rounded-xl bg-gray-50">
-              <div className="w-12 h-12 bg-accent-orange/10 text-accent-orange rounded-lg flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Grow Your Reach</h3>
-              <p className="text-sm text-gray-600">
-                Your own digital storefront with SEO-friendly listings. Go beyond Gikomba borders.
-              </p>
-            </div>
+            <button
+              onClick={() => navigate('/marketplace')}
+              className="text-xs font-bold text-jenga-700 hover:underline"
+            >
+              See all products →
+            </button>
           </div>
-        </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-12">
-            How It Works
-          </h2>
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-jenga-600 text-white rounded-full flex items-center justify-center font-bold">
-                  1
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
+            {parentCategories.map((cat) => (
+              <div
+                key={cat.id}
+                onClick={() => navigate(`/marketplace?category=${cat.id}`)}
+                className="group cursor-pointer flex flex-col items-center text-center"
+              >
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gray-50 border border-gray-200/80 shadow-sm flex items-center justify-center p-3 group-hover:border-jenga-600 group-hover:shadow-md transition-all">
+                  {getParentIcon(cat.id)}
                 </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Post Your Product</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Vendors add items with price, stock level, and a WhatsApp link. We track inventory automatically.
-                  </p>
-                </div>
+                <span className="mt-2 text-xs font-bold text-gray-800 group-hover:text-jenga-700 transition-colors line-clamp-2">
+                  {cat.name}
+                </span>
               </div>
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-jenga-600 text-white rounded-full flex items-center justify-center font-bold">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Buyers Discover</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Buyers browse by category, see real-time stock, and connect directly with the seller.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-jenga-600 text-white rounded-full flex items-center justify-center font-bold">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Settle P2P</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Payment and delivery arranged directly between buyer and seller via M-Pesa and WhatsApp.
-                  </p>
-                </div>
-              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 3. Value Props Strip */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12 p-4 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-jenga-100 text-jenga-700 rounded-lg flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
             </div>
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-              <h4 className="font-semibold text-gray-900 mb-4">For Vendors</h4>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-center gap-2">
-                  <ArrowRight className="h-4 w-4 text-jenga-600" />
-                  Automatic low-stock alerts via dashboard
-                </li>
-                <li className="flex items-center gap-2">
-                  <ArrowRight className="h-4 w-4 text-jenga-600" />
-                  Your own online storefront URL
-                </li>
-                <li className="flex items-center gap-2">
-                  <ArrowRight className="h-4 w-4 text-jenga-600" />
-                  Zero platform commission on sales
-                </li>
-                <li className="flex items-center gap-2">
-                  <ArrowRight className="h-4 w-4 text-jenga-600" />
-                  Built-in lead tracking for business analytics
-                </li>
-              </ul>
+            <div>
+              <h4 className="font-bold text-xs">24/7 Direct Inquiries</h4>
+              <p className="text-[11px] text-gray-500">Connect directly via WhatsApp and direct line</p>
             </div>
           </div>
-        </div>
-      </section>
+
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent-green/10 text-accent-green rounded-lg flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs">Vetted Gikomba Merchants</h4>
+              <p className="text-[11px] text-gray-500">Verified store profiles and direct Till/Paybill numbers</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent-orange/10 text-accent-orange rounded-lg flex items-center justify-center shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs">Direct Wholesale Rates</h4>
+              <p className="text-[11px] text-gray-500">Real manufacturer and wholesale rates</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Today's Deals Section */}
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-accent-orange" />
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">Today's Deals</h2>
+            </div>
+            <button
+              onClick={() => navigate('/marketplace?sort=price-asc')}
+              className="text-xs font-bold text-jenga-700 hover:underline flex items-center gap-1"
+            >
+              View all deals <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-jenga-600 animate-spin" />
+            </div>
+          ) : deals.length === 0 ? (
+            <div className="bg-gray-50 rounded-2xl border border-gray-100 p-8 text-center text-gray-500 text-xs">
+              No product deals currently available.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {deals.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* 5. Trending Hardware Section */}
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Trending Hardware Listings</h2>
+            <button
+              onClick={() => navigate('/marketplace?sort=newest')}
+              className="text-xs font-bold text-jenga-700 hover:underline flex items-center gap-1"
+            >
+              Explore all <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-jenga-600 animate-spin" />
+            </div>
+          ) : trending.length === 0 ? (
+            <div className="bg-gray-50 rounded-2xl border border-gray-100 p-8 text-center text-gray-500 text-xs">
+              No trending listings found.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {trending.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }
